@@ -58,7 +58,9 @@ class PlainTasksBase(sublime_plugin.TextCommand):
             date = tznow.strftime(self.date_format).decode(self.sys_enc)
         except:
             date = tznow.strftime(self.date_format)
-        done_line_end = ' %s%s%s' % (tag, self.before_date_space, date if self.done_date else '')
+        done_line_end = (
+            f" {tag}{self.before_date_space}{date if self.done_date else ''}"
+        )
         return done_line_end.replace('  ', ' ').rstrip(), date
 
 

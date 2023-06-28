@@ -57,20 +57,20 @@ def _convert_date(matchstr, now):
         )?''', matchstr)
     year  = now.year
     month = now.month
-    day   = int(match_obj.group('day') or 0)
+    day = int(match_obj['day'] or 0)
     # print(day)
     if day:
-        year  = int(match_obj.group('yearORmonthORday'))
-        month = int(match_obj.group('monthORday'))
+        year = int(match_obj['yearORmonthORday'])
+        month = int(match_obj['monthORday'])
     else:
-        day = int(match_obj.group('monthORday') or 0)
+        day = int(match_obj['monthORday'] or 0)
         # print(day)
         if day:
-            month = int(match_obj.group('yearORmonthORday'))
+            month = int(match_obj['yearORmonthORday'])
             if month < now.month:
                 year += 1
         else:
-            day = int(match_obj.group('yearORmonthORday') or 0)
+            day = int(match_obj['yearORmonthORday'] or 0)
             # print(day)
             if 0 < day <= now.day:
                 # expect next month
@@ -80,9 +80,9 @@ def _convert_date(matchstr, now):
                     month = 1
             elif not day:  # @due(0) == today
                 day = now.day
-            # else would be day>now, i.e. future day in current month
-    hour   = match_obj.group('hour')   or now.hour
-    minute = match_obj.group('minute') or now.minute
+                    # else would be day>now, i.e. future day in current month
+    hour = match_obj['hour'] or now.hour
+    minute = match_obj['minute'] or now.minute
     hour, minute = int(hour), int(minute)
     if year < 100:
         year += 2000
@@ -107,16 +107,22 @@ def increase_date(view, region, text, now, date_format):
     if '++' in text:
         line = view.line(region)
         line_content = view.substr(line)
-        created = re.search(r'(?mxu)@created\(([\d\w,\.:\-\/ @]*)\)', line_content)
-        if created:
-            created_date, error = parse_date(created.group(1),
-                                             date_format=date_format,
-                                             yearfirst=is_yearfirst(date_format),
-                                             dayfirst=is_dayfirst(date_format),
-                                             default=now)
+        if created := re.search(
+            r'(?mxu)@created\(([\d\w,\.:\-\/ @]*)\)', line_content
+        ):
+            created_date, error = parse_date(
+                created[1],
+                date_format=date_format,
+                yearfirst=is_yearfirst(date_format),
+                dayfirst=is_dayfirst(date_format),
+                default=now,
+            )
             if error:
                 ln = (view.rowcol(line.a)[0] + 1)
-                print(u'\nPlainTasks:\nError at line %d\n\t%s\ncaused by text:\n\t"%s"\n' % (ln, error, created.group(0)))
+                print(
+                    u'\nPlainTasks:\nError at line %d\n\t%s\ncaused by text:\n\t"%s"\n'
+                    % (ln, error, created[0])
+                )
                 sublime.status_message(u'@created date is invalid at line %d, see console for details' % ln)
             else:
                 now = created_date
@@ -135,11 +141,11 @@ def increase_date(view, region, text, now, date_format):
          [:.]
          (?P<minute>\d*)
         )?''', text)
-    number = int(match_obj.group('number') or 0)
-    days   = match_obj.group('days')
-    weeks  = match_obj.group('weeks')
-    hour   = int(match_obj.group('hour') or 0)
-    minute = int(match_obj.group('minute') or 0)
+    number = int(match_obj['number'] or 0)
+    days = match_obj['days']
+    weeks = match_obj['weeks']
+    hour = int(match_obj['hour'] or 0)
+    minute = int(match_obj['minute'] or 0)
     if not (number or hour or minute) or (not number and (days or weeks)):
         # set 1 if number is omitted, i.e.
         #   @due(+) == @due(+1) == @due(+1d)
@@ -221,7 +227,7 @@ def format_delta(view, delta):
     delta -= timedelta(microseconds=delta.microseconds)
     if view.settings().get('decimal_minutes', False):
         days = delta.days
-        delta = u'%s%s%s%s' % (days or '', ' day, ' if days == 1 else '', ' days, ' if days > 1 else '', '%.2f' % (delta.seconds / 3600.0) if delta.seconds else '')
+        delta = f"{days or ''}{' day, ' if days == 1 else ''}{' days, ' if days > 1 else ''}{'%.2f' % (delta.seconds / 3600.0) if delta.seconds else ''}"
     else:
         delta = str(delta)
     if delta[~7:] == ' 0:00:00' or delta == '0:00:00':  # strip meaningless time
@@ -292,24 +298,23 @@ class PlainTasksToggleHighlightPastDue(PlainTasksEnabled):
             if error:
                 # print(error)
                 misformatted.append(region)
+            elif now >= date:
+                past_due.append(region)
+                phantoms.append((region.a, f'-{format_delta(self.view, default - date)}'))
             else:
-                if now >= date:
-                    past_due.append(region)
-                    phantoms.append((region.a, '-' + format_delta(self.view, default - date)))
-                else:
-                    phantoms.append((region.a, format_delta(self.view, date - default)))
-                    if due_soon_threshold:
-                        td = (date - now)
-                        # timedelta.total_seconds() is not available in 2.6.x
-                        time_left = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10.0**6
-                        if time_left < due_soon_threshold:
-                            due_soon.append(region)
+                phantoms.append((region.a, format_delta(self.view, date - default)))
+                if due_soon_threshold:
+                    td = (date - now)
+                    # timedelta.total_seconds() is not available in 2.6.x
+                    time_left = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10.0**6
+                    if time_left < due_soon_threshold:
+                        due_soon.append(region)
         return past_due, due_soon, misformatted, phantoms
 
 
 class PlainTasksHLDue(sublime_plugin.EventListener):
     def on_activated(self, view):
-        if not view.score_selector(0, "text.todo") > 0:
+        if view.score_selector(0, "text.todo") <= 0:
             return
         view.run_command('plain_tasks_toggle_highlight_past_due')
 
@@ -325,10 +330,16 @@ class PlainTasksFoldToDueTags(PlainTasksFold):
         if not self.view.settings().get('highlight_past_due', True):
             return sublime.message_dialog('highlight_past_due setting must be true')
         self.view.run_command('plain_tasks_toggle_highlight_past_due')
-        dues = sorted(self.view.line(r) for r in (self.view.get_regions('past_due') + self.view.get_regions('due_soon')))
-        if not dues:
+        if dues := sorted(
+            self.view.line(r)
+            for r in (
+                self.view.get_regions('past_due')
+                + self.view.get_regions('due_soon')
+            )
+        ):
+            self.exec_folding(self.add_projects_and_notes(dues))
+        else:
             return sublime.message_dialog('No overdue tasks.\nCongrats!')
-        self.exec_folding(self.add_projects_and_notes(dues))
 
 
 class PlainTasksCalculateTotalTimeForProject(PlainTasksEnabled):
@@ -336,7 +347,11 @@ class PlainTasksCalculateTotalTimeForProject(PlainTasksEnabled):
         line = self.view.line(int(start))
         total, eol = self.calc_total_time_for_project(line)
         if total:
-            self.view.insert(edit, eol, ' @total(%s)' % format_delta(self.view, total).rstrip(', '))
+            self.view.insert(
+                edit,
+                eol,
+                f" @total({format_delta(self.view, total).rstrip(', ')})",
+            )
 
     def calc_total_time_for_project(self, line):
         pattern = r'(?<=\s)@(lasted|wasted|total)\([ \t]*(?:(\d+)[ \t]*days?,?)?[ \t]*((?:(\d+)\:(\d+)\:?(\d+)?)|(?:(\d+)\.(\d+)))?[ \t]*\)'
@@ -388,7 +403,7 @@ class PlainTasksCalculateTimeForTask(PlainTasksEnabled):
 
         delta = format_delta(self.view, sum(deltas, timedelta()))
 
-        tag = ' @%s(%s)' % (tag, delta.rstrip(', ') if delta else ('a bit' if '%H' in date_format else 'less than day'))
+        tag = f" @{tag}({delta.rstrip(', ') if delta else 'a bit' if '%H' in date_format else 'less than day'})"
         eol = int(eol)
         if self.view.substr(sublime.Region(eol - 2, eol)) == '  ':
             eol -= 2  # keep double whitespace at eol
@@ -408,13 +423,13 @@ class PlainTasksReCalculateTimeForTasks(PlainTasksEnabled):
         regions = itertools.chain(*(reversed(self.view.lines(region)) for region in reversed(list(self.view.sel()))))
         for line in regions:
             current_scope = self.view.scope_name(line.a)
-            if not any(s in current_scope for s in ('completed', 'cancelled')):
+            if all(s not in current_scope for s in ('completed', 'cancelled')):
                 continue
 
             line_contents = self.view.substr(line)
 
             done_match = re.match(done, line_contents, re.U)
-            now = done_match.group(2) if done_match else default_now
+            now = done_match[2] if done_match else default_now
 
             started_matches = re.findall(started, line_contents, re.U)
             toggle_matches = re.findall(toggle, line_contents, re.U)
@@ -505,7 +520,7 @@ class PlainTasksPreviewShortDate(PlainTasksViewEventListener):
         upd = []
         if not error:
             if now >= date:
-                delta = '-' + format_delta(self.view, now - date)
+                delta = f'-{format_delta(self.view, now - date)}'
             else:
                 delta = format_delta(self.view, date - now)
             content = (overdue_format if '-' in delta else remain_format).format(time=delta.lstrip('-') or 'a little bit')
@@ -524,7 +539,7 @@ class PlainTasksPreviewShortDate(PlainTasksViewEventListener):
                         content,
                         sublime.LAYOUT_BELOW))
             date = date.strftime(date_format).strip('()')
-        if date == match.group(1).strip():
+        if date == match[1].strip():
             self.phantoms.update(upd)
             return
 
@@ -716,12 +731,16 @@ class PlainTasksRemain(PlainTasksViewEventListener):
         remain_format = self.view.settings().get('due_remain_format', '{time} remaining')
         overdue_format = self.view.settings().get('due_overdue_format', '{time} overdue')
 
-        upd = []
-        for point, content in self.phantoms:
-            upd.append(sublime.Phantom(
+        upd = [
+            sublime.Phantom(
                 sublime.Region(point),
-                (overdue_format if '-' in content else remain_format).format(time=content.lstrip('-') or 'a little bit'),
-                sublime.LAYOUT_BELOW))
+                (overdue_format if '-' in content else remain_format).format(
+                    time=content.lstrip('-') or 'a little bit'
+                ),
+                sublime.LAYOUT_BELOW,
+            )
+            for point, content in self.phantoms
+        ]
         self.phantom_set.update(upd)
 
 

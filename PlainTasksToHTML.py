@@ -36,8 +36,7 @@ def hex_to_rgba(value):
 
 def convert_to_rgba_css(word):
     rgba = hex_to_rgba(word)
-    rgba_css = 'rgb%s(%s)' % ('a' if len(rgba) > 3 else '', ','.join(rgba))
-    return rgba_css
+    return f"rgb{'a' if len(rgba) > 3 else ''}({','.join(rgba)})"
 
 
 default_ccsl = [  # hand-made repr of tasks.hidden-tmTheme
@@ -86,7 +85,7 @@ scope_to_tag = {  # key is name of regex group, value is regex expression
     '__sep':         r'separator(?:\.todo(?!\.))?',
     '__sep_archive': r'archive(?:\.todo(?!\.))?'
 }
-allrxinone = r'|'.join([('(?P<%s>%s)' % (t, r)) for t, r in scope_to_tag.items()])
+allrxinone = r'|'.join([f'(?P<{t}>{r})' for t, r in scope_to_tag.items()])
 SCOPES_REGEX = re.compile(allrxinone)
 
 
@@ -114,7 +113,7 @@ def convert_tmtheme_to_css(theme_file):
                 k = k.replace('foreground', 'color')
                 if v:
                     if any(k == w for w in ('background', 'color')):
-                        props_str += '%s: %s; ' % (k, convert_to_rgba_css(v) or v)
+                        props_str += f'{k}: {convert_to_rgba_css(v) or v}; '
                     elif k == 'fontStyle':
                         if 'bold' in v:
                             props_str += 'font-weight: bold; font-style: normal; '
@@ -123,9 +122,9 @@ def convert_tmtheme_to_css(theme_file):
             if not props.get('fontStyle'):
                 props_str += 'font-weight: normal; font-style: normal; '
             if not props.get('foreground'):
-                props_str += 'color: %s; ' % default_color
+                props_str += f'color: {default_color}; '
         else:
-            props_str += 'color: %s; font-weight: normal; font-style: normal; ' % default_color
+            props_str += f'color: {default_color}; font-weight: normal; font-style: normal; '
         if scope == 'keyword':
             props_str += 'width: 100%; '
 
@@ -133,14 +132,14 @@ def convert_tmtheme_to_css(theme_file):
         tag = mo.lastgroup.replace('__', '.').replace('_', '-') if mo else ''
         if tag:
             cssl.append('%s { %s}' % (tag, props_str))
-        # else:
-            # if not any(w in scope for w in ('bold', 'italic')):
-                # print('\n\n')
-                # print('NO TAG FOR', scope)
-                # print('REGEX:')
-                # print(allrxinone)
-                # print(allrxinone.replace(')|(', ')\n('))
-                # print('\n\n')
+            # else:
+                # if not any(w in scope for w in ('bold', 'italic')):
+                    # print('\n\n')
+                    # print('NO TAG FOR', scope)
+                    # print('REGEX:')
+                    # print(allrxinone)
+                    # print(allrxinone.replace(')|(', ')\n('))
+                    # print('\n\n')
     return cssl
 
 
@@ -164,11 +163,11 @@ class PlainTasksConvertToHtml(PlainTasksBase):
             i = self.view.scope_name(r.a)
 
             if patterns['HEADER'] in i:
-                ht = '<span class="header">%s</span>' % cgi.escape(self.view.substr(r))
+                ht = f'<span class="header">{cgi.escape(self.view.substr(r))}</span>'
 
             elif i == patterns['EMPTY']:
                 # these are empty lines (i.e. linebreaks, but span can be {display:none})
-                ht = '<span class="empty-line">%s</span>' % self.view.substr(r)
+                ht = f'<span class="empty-line">{self.view.substr(r)}</span>'
 
             elif patterns['NOTE'] in i:
                 scopes = self.extracting_scopes(self, r, i)
@@ -176,76 +175,76 @@ class PlainTasksConvertToHtml(PlainTasksBase):
                 for s in scopes:
                     sn = self.view.scope_name(s.a)
                     if 'italic' in sn:
-                        note += '<i>%s</i>' % cgi.escape(self.view.substr(s).strip('_*'))
+                        note += f"<i>{cgi.escape(self.view.substr(s).strip('_*'))}</i>"
                     elif 'bold' in sn:
-                        note += '<b>%s</b>' % cgi.escape(self.view.substr(s).strip('_*'))
+                        note += f"<b>{cgi.escape(self.view.substr(s).strip('_*'))}</b>"
                     elif 'url' in sn:
                         note += '<a href="{0}">{0}</a>'.format(cgi.escape(self.view.substr(s).strip('<>')))
                     else:
                         note += cgi.escape(self.view.substr(s))
-                ht = note + '</span>'
+                ht = f'{note}</span>'
 
             elif patterns['OPEN'] in i:
                 scopes = self.extracting_scopes(self, r)
                 indent = self.view.substr(sublime.Region(r.a, scopes[0].a)) if r.a != scopes[0].a else ''
-                pending = '<span class="open">%s' % indent
+                pending = f'<span class="open">{indent}'
                 for s in scopes:
                     sn = self.view.scope_name(s.a)
                     if 'bullet' in sn:
-                        pending += '<span class="bullet-pending">%s</span>' % self.view.substr(s)
+                        pending += f'<span class="bullet-pending">{self.view.substr(s)}</span>'
                     elif 'meta.tag' in sn:
-                        pending += '<span class="tag">%s</span>' % cgi.escape(self.view.substr(s))
+                        pending += f'<span class="tag">{cgi.escape(self.view.substr(s))}</span>'
                     elif 'tag.todo.today' in sn:
-                        pending += '<span class="tag-today">%s</span>' % self.view.substr(s)
+                        pending += f'<span class="tag-today">{self.view.substr(s)}</span>'
                     elif 'tag.todo.critical' in sn:
-                        pending += '<span class="tag-critical">%s</span>' % self.view.substr(s)
+                        pending += f'<span class="tag-critical">{self.view.substr(s)}</span>'
                     elif 'tag.todo.high' in sn:
-                        pending += '<span class="tag-high">%s</span>' % self.view.substr(s)
+                        pending += f'<span class="tag-high">{self.view.substr(s)}</span>'
                     elif 'tag.todo.low' in sn:
-                        pending += '<span class="tag-low">%s</span>' % self.view.substr(s)
+                        pending += f'<span class="tag-low">{self.view.substr(s)}</span>'
                     elif 'italic' in sn:
-                        pending += '<i>%s</i>' % cgi.escape(self.view.substr(s).strip('_*'))
+                        pending += f"<i>{cgi.escape(self.view.substr(s).strip('_*'))}</i>"
                     elif 'bold' in sn:
-                        pending += '<b>%s</b>' % cgi.escape(self.view.substr(s).strip('_*'))
+                        pending += f"<b>{cgi.escape(self.view.substr(s).strip('_*'))}</b>"
                     elif 'url' in sn:
                         pending += '<a href="{0}">{0}</a>'.format(cgi.escape(self.view.substr(s).strip('<>')))
                     else:
                         pending += cgi.escape(self.view.substr(s))
-                ht = pending + '</span>'
+                ht = f'{pending}</span>'
 
             elif patterns['DONE'] in i:
                 scopes = self.extracting_scopes(self, r)
                 indent = self.view.substr(sublime.Region(r.a, scopes[0].a)) if r.a != scopes[0].a else ''
-                done = '<span class="done">%s' % indent
+                done = f'<span class="done">{indent}'
                 for s in scopes:
                     sn = self.view.scope_name(s.a)
                     if 'bullet' in sn:
-                        done += '<span class="bullet-done">%s</span>' % self.view.substr(s)
+                        done += f'<span class="bullet-done">{self.view.substr(s)}</span>'
                     elif 'tag.todo.completed' in sn:
-                        done += '<span class="tag-done">%s</span>' % cgi.escape(self.view.substr(s))
+                        done += f'<span class="tag-done">{cgi.escape(self.view.substr(s))}</span>'
                     else:
                         done += cgi.escape(self.view.substr(s))
-                ht = done + '</span>'
+                ht = f'{done}</span>'
 
             elif patterns['CANCELLED'] in i:
                 scopes = self.extracting_scopes(self, r)
                 indent = self.view.substr(sublime.Region(r.a, scopes[0].a)) if r.a != scopes[0].a else ''
-                cancelled = '<span class="cancelled">%s' % indent
+                cancelled = f'<span class="cancelled">{indent}'
                 for s in scopes:
                     sn = self.view.scope_name(s.a)
                     if 'bullet' in sn:
-                        cancelled += '<span class="bullet-cancelled">%s</span>' % self.view.substr(s)
+                        cancelled += f'<span class="bullet-cancelled">{self.view.substr(s)}</span>'
                     elif 'tag.todo.cancelled' in sn:
-                        cancelled += '<span class="tag-cancelled">%s</span>' % cgi.escape(self.view.substr(s))
+                        cancelled += f'<span class="tag-cancelled">{cgi.escape(self.view.substr(s))}</span>'
                     else:
                         cancelled += cgi.escape(self.view.substr(s))
-                ht = cancelled + '</span>'
+                ht = f'{cancelled}</span>'
 
             elif patterns['SEPARATOR'] in i:
-                ht = '<span class="sep">%s</span>' % cgi.escape(self.view.substr(r))
+                ht = f'<span class="sep">{cgi.escape(self.view.substr(r))}</span>'
 
             elif patterns['ARCHIVE'] in i:
-                ht = '<span class="sep-archive">%s</span>' % cgi.escape(self.view.substr(r))
+                ht = f'<span class="sep-archive">{cgi.escape(self.view.substr(r))}</span>'
 
             else:
                 sublime.error_message('Hey! you are not supposed to see this message.\n'
@@ -259,7 +258,7 @@ class PlainTasksConvertToHtml(PlainTasksBase):
             window = sublime.active_window()
             nv = window.new_file()
             nv.set_syntax_file('Packages/HTML/HTML.tmLanguage')
-            nv.set_name(title + '.html')
+            nv.set_name(f'{title}.html')
             nv.insert(edit, 0, html)
             window.run_command('close_file')
             return
@@ -267,7 +266,7 @@ class PlainTasksConvertToHtml(PlainTasksBase):
         tmp_html = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
         tmp_html.write(html.encode('utf-8'))
         tmp_html.close()
-        webbrowser.open_new_tab("file://%s" % tmp_html.name)
+        webbrowser.open_new_tab(f"file://{tmp_html.name}")
 
     def produce_html_from_template(self, title, html_doc):
         html_lines = []

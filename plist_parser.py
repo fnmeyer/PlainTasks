@@ -136,16 +136,18 @@ class XmlPropertyListParser(object):
 
     def _start_plist(self, name, attrs):
         self._assert(not self.__stack and self.__plist is None, "<plist> more than once.")
-        self._assert(attrs.get('version', '1.0') == '1.0',
-                     "version 1.0 is only supported, but was '%s'." % attrs.get('version'))
+        self._assert(
+            attrs.get('version', '1.0') == '1.0',
+            f"version 1.0 is only supported, but was '{attrs.get('version')}'.",
+        )
 
     def _start_array(self, name, attrs):
-        v = list()
+        v = []
         self._push_value(v)
         self._push_stack(v)
 
     def _start_dict(self, name, attrs):
-        v = dict()
+        v = {}
         self._push_value(v)
         self._push_stack(v)
 
@@ -154,7 +156,7 @@ class XmlPropertyListParser(object):
 
     def _end_dict(self, name):
         if self.__key is not None:
-            raise PropertyListParseError("Missing value for key '%s'" % self.__key)
+            raise PropertyListParseError(f"Missing value for key '{self.__key}'")
         self._pop_stack()
 
     def _start_true(self, name, attrs):
@@ -189,7 +191,7 @@ class XmlPropertyListParser(object):
         pattern = XmlPropertyListParser.DATETIME_PATTERN
         match = pattern.match(content)
         if not match:
-            raise PropertyListParseError("Failed to parse datetime '%s'" % content)
+            raise PropertyListParseError(f"Failed to parse datetime '{content}'")
 
         groups, components = match.groupdict(), []
         for key in units:
